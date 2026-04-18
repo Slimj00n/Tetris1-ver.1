@@ -87,15 +87,41 @@
             dropCounter = 0;
         }
 
+        // 하드 드롭 수정
         function hardDrop() {
             if (!gameActive) return;
-            let d = 0; while (!collide(piece)) { piece.pos.y++; d++; }
-            piece.pos.y--; score += d * 2; if (navigator.vibrate) navigator.vibrate(10); merge(); draw();
+            let d = 0;
+            while (!collide(piece)) {
+                piece.pos.y++;
+                d++;
+            }
+            piece.pos.y--;
+    
+            // 바닥에 닿은 거리만큼 점수 추가 (한 칸당 2점)
+            score += d * 2; 
+    
+            if (navigator.vibrate) navigator.vibrate(10);
+    
+            merge(); // 여기서 draw()를 호출하지 않아도 merge -> spawn -> update 루프에서 그려집니다.
         }
 
+        // 착지 시 기본 점수 추가 (merge 함수 수정)
         function merge() {
-            piece.matrix.forEach((row, y) => row.forEach((v, x) => { if (v && piece.pos.y + y >= 0) board[piece.pos.y + y][piece.pos.x + x] = v; }));
-            clearLines(); piece = spawnPiece(); if (!gameActive) showGameOver();
+           piece.matrix.forEach((row, y) => {
+                row.forEach((v, x) => {
+                    if (v && piece.pos.y + y >= 0) {
+                        board[piece.pos.y + y][piece.pos.x + x] = v;
+                    }
+                });
+            });
+    
+            // 블록이 착지할 때마다 기본 점수 10점 추가
+            score += 10; 
+    
+            clearLines();
+            piece = spawnPiece();
+           if (!gameActive) showGameOver();
+            updateUI(); // UI 업데이트 강제 호출
         }
 
         function clearLines() {
