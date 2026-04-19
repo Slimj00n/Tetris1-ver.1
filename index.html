@@ -195,10 +195,55 @@
             e.preventDefault();
         }, {passive: false});
 
-        // 하단 버튼 제어 (클릭 시 1칸 이동)
-        document.getElementById('btn-left').addEventListener('click', () => { if(gameActive) { piece.pos.x--; if(collide(piece)) piece.pos.x++; draw(); } });
-        document.getElementById('btn-right').addEventListener('click', () => { if(gameActive) { piece.pos.x++; if(collide(piece)) piece.pos.x--; draw(); } });
-        document.getElementById('btn-down').addEventListener('click', () => { if(gameActive) { drop(); draw(); } });
+// 하단 버튼 제어 (클릭 시 1칸 이동)
+document.getElementById('btn-left').addEventListener('click', () => { if(gameActive) { piece.pos.x--; if(collide(piece)) piece.pos.x++; draw(); } });
+document.getElementById('btn-right').addEventListener('click', () => { if(gameActive) { piece.pos.x++; if(collide(piece)) piece.pos.x--; draw(); } });
+
+// ▼ 버튼: 꾹 누르면 부드럽게 연속 하강 (소프트 드롭)
+let softDropInterval;
+const btnDown = document.getElementById('btn-down');
+
+function startSoftDrop(e) {
+    if (e.cancelable) e.preventDefault(); // 모바일 꾹 누르기 시 텍스트 선택/메뉴 팝업 방지
+    if (!gameActive) return;
+    
+    // 누르자마자 즉시 1칸 하강
+    drop(); 
+    score += 0.5; 
+    draw(); 
+    
+    // 기존 타이머가 있다면 초기화
+    if (softDropInterval) clearInterval(softDropInterval);
+    
+    // 꾹 누르고 있으면 60ms 간격으로 연속 하강 실행
+    softDropInterval = setInterval(() => {
+        if (gameActive) {
+            drop(); 
+            score += 0.5; // 키보드 방향키처럼 점수 소폭 추가
+            draw();
+        } else {
+            clearInterval(softDropInterval);
+        }
+    }, 60); // 💡 숫자를 줄이면 더 빨리 떨어지고, 늘리면 느리게 떨어집니다 (추천: 50~80)
+}
+
+function stopSoftDrop(e) {
+    if (e.cancelable) e.preventDefault();
+    if (softDropInterval) {
+        clearInterval(softDropInterval);
+        softDropInterval = null;
+    }
+}
+
+// 마우스(PC) 및 터치(모바일) 누를 때 이벤트 시작
+btnDown.addEventListener('mousedown', startSoftDrop);
+btnDown.addEventListener('touchstart', startSoftDrop, { passive: false });
+
+// 손을 떼거나 마우스가 버튼 밖으로 나가면 하강 중지
+btnDown.addEventListener('mouseup', stopSoftDrop);
+btnDown.addEventListener('mouseleave', stopSoftDrop);
+btnDown.addEventListener('touchend', stopSoftDrop);
+btnDown.addEventListener('touchcancel', stopSoftDrop);
 
         // 키보드 제어 (PC용)
         window.addEventListener('keydown', e => {
