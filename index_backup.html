@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tetris ver.1</title>
+    <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { 
+            background: #141419; color: white; margin: 0; padding: 0;
+            display: flex; flex-direction: column; align-items: center; 
+            font-family: sans-serif; overflow: hidden; touch-action: none;
+            height: 100vh; justify-content: center;
+        }
+        h1 { margin: 5px 0; font-size: 20px; color: #0096ff; }
+        #game-container { display: flex; gap: 10px; align-items: flex-start; }
+        #game-wrapper { position: relative; border: 3px solid #444; background: #232328; }
+        canvas { display: block; background: #000; }
+        #tetris { width: 60vw; max-width: 240px; height: auto; }
+        .side-panel { display: flex; flex-direction: column; gap: 8px; }
+        .info-box { background: #232328; border: 2px solid #333; padding: 8px; width: 70px; text-align: center; border-radius: 5px; }
+        .info-label { font-size: 10px; color: #888; }
+        .val { color: #00ff96; font-size: 14px; font-weight: bold; }
+        #controls { display: flex; justify-content: center; gap: 10px; margin-top: 20px; width: 90%; max-width: 400px; }
+        .btn { background: #333; color: white; font-size: 20px; border: 2px solid #555; border-radius: 12px; padding: 20px; flex: 1; text-align: center; user-select: none; cursor: pointer; }
+        .btn:active { background: #444; border-color: #0096ff; }
+        .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(20,20,25,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; }
+        .action-btn { background: #0096ff; color: white; border: none; padding: 10px 20px; border-radius: 5px; font-weight: bold; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>TETRIS ver.1</h1>
+    <div id="game-container">
+        <div id="game-wrapper">
+            <canvas id="tetris" width="240" height="480"></canvas>
+            <div id="start-screen" class="overlay">
+                <button class="action-btn" onclick="resetGame()">START</button>
+            </div>
+            <div id="msg" class="overlay" style="display: none;">
+                <h2 id="final-score" style="color: #00ff96">0</h2>
+                <button class="action-btn" onclick="resetGame()">RESTART</button>
+            </div>
+        </div>
+        <div class="side-panel">
+            <div class="info-box"><div class="info-label">NEXT</div><canvas id="next-canvas" width="60" height="60" style="width:50px; height:50px;"></canvas></div>
+            <div class="info-box"><div class="info-label">LVL</div><div id="level-val" class="val" style="color:#ffcc00;">1</div></div>
+            <div class="info-box"><div class="info-label">SCR</div><div id="score-val" class="val">0</div></div>
+        </div>
+    </div>
+    <div id="controls"><div class="btn" id="btn-left">◀</div><div class="btn" id="btn-down">▼</div><div class="btn" id="btn-right">▶</div></div>
+
+    <script>
+        const canvas = document.getElementById('tetris');
+        const ctx = canvas.getContext('2d');
+        const nCtx = document.getElementById('next-canvas').getContext('2d');
+        const COLS = 10, ROWS = 20, BLOCK = 24;
+        const COLORS = [null, '#00f0f0', '#f0f000', '#a000f0', '#00f000', '#f00000', '#0000f0', '#f0a000'];
+        const SHAPES = [null, [[1,1,1,1]], [[2,2],[2,2]], [[0,3,0],[3,3,3]], [[0,4,4],[4,4,0]], [[5,5,0],[0,5,5]], [[6,0,0],[6,6,6]], [[0,0,7],[7,7,7]]];
+
+        let board, score, level, linesCleared, gameActive = false, piece, nextPiece, dropCounter, lastTime, animId, lockDelayTimeout;
+
+        function resetGame() {
+            board = Array.from({length: ROWS}, () => Array(COLS).fill(0));
+            score = 0; level = 1; linesCleared = 0; gameActive = true;
+            nextPiece = getNewPiece(); piece = spawnPiece();
+            dropCounter = 0; lastTime = performance.now();
+            updateUI();
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('msg').style.display = 'none';
+            if (animId) cancelAnimationFrame(animId);
+            update();
+        }
+
+        function getNewPiece() { return { matrix: SHAPES[Math.floor(Math.random() * 7) + 1], id: Math.floor(Math.random() * 7) + 1 }; }
+        function spawnPiece() { const p = nextPiece; nextPiece = getNewPiece(); const np = { pos: {x: 3, y: 0}, matrix: p.matrix, id: p.id }; if (collide(np)) gameActive = false; drawSide(); return np; }
+        function collide(p) { return p.matrix.some((row, y) => row.some((v, x) => v && (p.pos.x + x < 0 || p.pos.x + x >= COLS || p.pos.y + y >= ROWS || (p.pos.y + y >= 0 && board[p.pos.y + y][p.pos.x + x])))); }
+
+        function drop() {
+            if (!gameActive) return;
+            piece.pos.y++;
+            if (collide(piece)) {
+                piece.pos.y--;
+                if (!lockDelayTimeout) {
+                    lockDelayTimeout = setTimeout(() => { if (collide({...piece, pos: {...piece.pos, y: piece.pos.y + 1}})) merge(); lockDelayTimeout = null; }, 500);
+                }
+            } else { if (lockDelayTimeout) { clearTimeout(lockDelayTimeout); lockDelayTimeout = null; } }
+            dropCounter = 0;
+        }
+
+        // 하드 드롭 수정
+        function hardDrop() {
+            if (!gameActive) return;
+            let d = 0;
+            while (!collide(piece)) {
+                piece.pos.y++;
+                d++;
+            }
+            piece.pos.y--;
+    
+            // 바닥에 닿은 거리만큼 점수 추가 (한 칸당 2점)
+            score += d * 2; 
+    
+            if (navigator.vibrate) navigator.vibrate(10);
+    
+            merge(); // 여기서 draw()를 호출하지 않아도 merge -> spawn -> update 루프에서 그려집니다.
+        }
+
+        // 착지 시 기본 점수 추가 (merge 함수 수정)
+        function merge() {
+           piece.matrix.forEach((row, y) => {
+                row.forEach((v, x) => {
+                    if (v && piece.pos.y + y >= 0) {
+                        board[piece.pos.y + y][piece.pos.x + x] = v;
+                    }
+                });
+            });
+    
+            // 블록이 착지할 때마다 기본 점수 10점 추가
+            score += 10; 
+    
+            clearLines();
+            piece = spawnPiece();
+           if (!gameActive) showGameOver();
+            updateUI(); // UI 업데이트 강제 호출
+        }
+
+        function clearLines() {
+            let count = 0;
+            for (let y = ROWS - 1; y >= 0; y--) { if (board[y].every(v => v !== 0)) { board.splice(y, 1); board.unshift(Array(COLS).fill(0)); count++; y++; } }
+            if (count > 0) { linesCleared += count; score += [0, 100, 300, 500, 800][count] * level; level = Math.floor(linesCleared / 10) + 1; if (navigator.vibrate) navigator.vibrate(20); updateUI(); }
+        }
+
+        function rotate() {
+            const m = piece.matrix; const r = m[0].map((_, i) => m.map(row => row[i]).reverse()); const ox = piece.pos.x; piece.matrix = r;
+            let f = 1; while (collide(piece)) { piece.pos.x += f; f = -(f + (f > 0 ? 1 : -1)); if (f > 4) { piece.matrix = m; piece.pos.x = ox; return; } }
+        }
+
+        function drawBlock(c, x, y, v, s = BLOCK) { c.fillStyle = COLORS[v]; c.fillRect(x * s, y * s, s, s); c.strokeStyle = 'rgba(255,255,255,0.4)'; c.strokeRect(x * s, y * s, s, s); }
+        function drawSide() { nCtx.fillStyle = '#232328'; nCtx.fillRect(0,0,60,60); nextPiece.matrix.forEach((row, y) => row.forEach((v, x) => { if(v) drawBlock(nCtx, x+0.5, y+0.5, v, 12); })); }
+        function updateUI() { document.getElementById('score-val').innerText = Math.floor(score); document.getElementById('level-val').innerText = level; }
+        function showGameOver() { document.getElementById('msg').style.display = 'flex'; document.getElementById('final-score').innerText = Math.floor(score); }
+
+        function draw() {
+            ctx.fillStyle = '#141419'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            board.forEach((row, y) => row.forEach((v, x) => { if (v) drawBlock(ctx, x, y, v); }));
+            if (gameActive) {
+                let g = { pos: {...piece.pos}, matrix: piece.matrix }; while(!collide(g)) g.pos.y++; g.pos.y--;
+                g.matrix.forEach((row, y) => row.forEach((v, x) => { if(v && g.pos.y + y >= 0) { ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect((g.pos.x + x) * BLOCK, (g.pos.y + y) * BLOCK, BLOCK, BLOCK); } }));
+                piece.matrix.forEach((row, y) => row.forEach((v, x) => { if (v && piece.pos.y + y >= 0) drawBlock(ctx, piece.pos.x + x, piece.pos.y + y, v); }));
+            }
+        }
+
+        // --- 터치 제어 통합 (스와이프 이동 + 하드드롭 + 탭 회전) ---
+        let sX, sY, lastX, lastY, drp, isMove;
+        const MOVE_THRESHOLD = 30; // 30px 이동할 때마다 한 칸 이동
+
+        canvas.addEventListener('touchstart', e => {
+            const t = e.touches[0];
+            sX = lastX = t.clientX;
+            sY = lastY = t.clientY;
+            drp = false; isMove = false;
+            e.preventDefault();
+        }, {passive: false});
+
+        canvas.addEventListener('touchmove', e => {
+            if (!gameActive || drp) return;
+            const t = e.touches[0];
+            const dx = t.clientX - sX;
+            const dy = t.clientY - sY;
+            const moveDx = t.clientX - lastX;
+
+            // 1. 하드드롭 감지 (아래로 50px 이상)
+            if (dy > 50 && Math.abs(dy) > Math.abs(dx)) {
+                hardDrop(); drp = true;
+            } 
+            // 2. 좌우 스와이프 이동 감지
+            else if (Math.abs(moveDx) > MOVE_THRESHOLD) {
+                if (moveDx > 0) { piece.pos.x++; if(collide(piece)) piece.pos.x--; }
+                else { piece.pos.x--; if(collide(piece)) piece.pos.x++; }
+                lastX = t.clientX; // 기준점 갱신 (연속 이동 가능)
+                isMove = true;
+                draw();
+            }
+            e.preventDefault();
+        }, {passive: false});
+
+        canvas.addEventListener('touchend', e => {
+            const t = e.changedTouches[0];
+            const dx = t.clientX - sX;
+            const dy = t.clientY - sY;
+            // 이동이나 드롭이 없었고 살짝 탭했을 때만 회전
+            if (!isMove && !drp && Math.abs(dx) < 15 && Math.abs(dy) < 15) {
+                rotate(); draw();
+            }
+            e.preventDefault();
+        }, {passive: false});
+
+// 하단 버튼 제어 (클릭 시 1칸 이동)
+document.getElementById('btn-left').addEventListener('click', () => { if(gameActive) { piece.pos.x--; if(collide(piece)) piece.pos.x++; draw(); } });
+document.getElementById('btn-right').addEventListener('click', () => { if(gameActive) { piece.pos.x++; if(collide(piece)) piece.pos.x--; draw(); } });
+
+// ▼ 버튼: 꾹 누르면 부드럽게 연속 하강 (소프트 드롭)
+let softDropInterval;
+const btnDown = document.getElementById('btn-down');
+
+function startSoftDrop(e) {
+    if (e.cancelable) e.preventDefault(); // 모바일 꾹 누르기 시 텍스트 선택/메뉴 팝업 방지
+    if (!gameActive) return;
+    
+    // 누르자마자 즉시 1칸 하강
+    drop(); 
+    score += 0.5; 
+    draw(); 
+    
+    // 기존 타이머가 있다면 초기화
+    if (softDropInterval) clearInterval(softDropInterval);
+    
+    // 꾹 누르고 있으면 60ms 간격으로 연속 하강 실행
+    softDropInterval = setInterval(() => {
+        if (gameActive) {
+            drop(); 
+            score += 0.5; // 키보드 방향키처럼 점수 소폭 추가
+            draw();
+        } else {
+            clearInterval(softDropInterval);
+        }
+    }, 60); // 💡 숫자를 줄이면 더 빨리 떨어지고, 늘리면 느리게 떨어집니다 (추천: 50~80)
+}
+
+function stopSoftDrop(e) {
+    if (e.cancelable) e.preventDefault();
+    if (softDropInterval) {
+        clearInterval(softDropInterval);
+        softDropInterval = null;
+    }
+}
+
+// 마우스(PC) 및 터치(모바일) 누를 때 이벤트 시작
+btnDown.addEventListener('mousedown', startSoftDrop);
+btnDown.addEventListener('touchstart', startSoftDrop, { passive: false });
+
+// 손을 떼거나 마우스가 버튼 밖으로 나가면 하강 중지
+btnDown.addEventListener('mouseup', stopSoftDrop);
+btnDown.addEventListener('mouseleave', stopSoftDrop);
+btnDown.addEventListener('touchend', stopSoftDrop);
+btnDown.addEventListener('touchcancel', stopSoftDrop);
+
+        // 키보드 제어 (PC용)
+        window.addEventListener('keydown', e => {
+            if(!gameActive) return;
+            if(e.key === 'ArrowLeft') { piece.pos.x--; if(collide(piece)) piece.pos.x++; }
+            if(e.key === 'ArrowRight') { piece.pos.x++; if(collide(piece)) piece.pos.x--; }
+            if(e.key === 'ArrowDown') { drop(); score += 0.5; }
+            if(e.key === 'ArrowUp') rotate();
+            if(e.key === ' ') hardDrop();
+            draw();
+        });
+
+        function update(time = 0) { if (!gameActive) return; const dt = time - lastTime; lastTime = time; dropCounter += dt; const speed = Math.max(100, 800 - (level - 1) * 70); if (dropCounter > speed) drop(); draw(); animId = requestAnimationFrame(update); }
+        draw();
+    </script>
+</body>
+</html>
