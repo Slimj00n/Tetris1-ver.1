@@ -3,50 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tetris ver.1</title>
+    <title>Tetris 1990 ver.1</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/DungGeunMo.css">
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { 
-            background: #141419; color: white; margin: 0; padding: 0;
+            /* 90년대 오락실 배경색 (진한 남색/보라) */
+            background: #0d001a; color: #fff; margin: 0; padding: 0;
             display: flex; flex-direction: column; align-items: center; 
-            font-family: sans-serif; overflow: hidden; touch-action: none;
+            /* 모든 글씨를 레트로 폰트로 */
+            font-family: 'DungGeunMo', sans-serif; overflow: hidden; touch-action: none;
             height: 100vh; justify-content: center;
         }
-        h1 { margin: 5px 0; font-size: 20px; color: #0096ff; }
-        #game-container { display: flex; gap: 10px; align-items: flex-start; }
-        #game-wrapper { position: relative; border: 3px solid #444; background: #232328; }
+        
+        /* 제목 스타일: Tetris 1 ver.1 */
+        h1 { margin: 5px 0 15px 0; font-size: 28px; text-align: center; text-transform: uppercase; }
+        .title-main { color: #00ffff; text-shadow: 2px 2px #ff00ff; } /* 네온 하늘색 + 핑크 그림자 */
+        .title-ver { color: #ffcc00; font-size: 16px; margin-left: 5px; } /* 노란색 버전 표시 */
+
+        #game-container { display: flex; gap: 15px; align-items: flex-start; }
+        
+        /* 게임 화면 테두리: 볼록한 브라운관 느낌 */
+        #game-wrapper { 
+            position: relative; 
+            border: 8px solid #553311; /* 벽돌색 테두리 */
+            background: #000; 
+            box-shadow: inset 0 0 20px rgba(0,255,255,0.2); /* 은은한 네온 광 */
+        }
         canvas { display: block; background: #000; }
         #tetris { width: 60vw; max-width: 240px; height: auto; }
-        .side-panel { display: flex; flex-direction: column; gap: 8px; }
-        .info-box { background: #232328; border: 2px solid #333; padding: 8px; width: 70px; text-align: center; border-radius: 5px; }
-        .info-label { font-size: 10px; color: #888; }
-        .val { color: #00ff96; font-size: 14px; font-weight: bold; }
-        #controls { display: flex; justify-content: center; gap: 10px; margin-top: 20px; width: 90%; max-width: 400px; }
-        .btn { background: #333; color: white; font-size: 20px; border: 2px solid #555; border-radius: 12px; padding: 20px; flex: 1; text-align: center; user-select: none; cursor: pointer; }
-        .btn:active { background: #444; border-color: #0096ff; }
-        .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(20,20,25,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; }
-        .action-btn { background: #0096ff; color: white; border: none; padding: 10px 20px; border-radius: 5px; font-weight: bold; cursor: pointer; }
+
+        /* 사이드 패널: 투박한 레트로 디자인 */
+        .side-panel { display: flex; flex-direction: column; gap: 10px; }
+        .info-box { 
+            background: #1a0033; 
+            border: 3px solid #3d007a; 
+            padding: 10px; width: 85px; text-align: center; 
+            border-radius: 0; /* 각진 디자인 */
+        }
+        .info-label { font-size: 12px; color: #aaa; margin-bottom: 5px; text-transform: uppercase;}
+        .val { color: #00ff00; font-size: 18px; font-weight: bold; text-shadow: 1px 1px #000; } /* 쨍한 초록색 */
+
+        /* 하단 조작 버튼: 오락실 버튼 느낌 */
+        #controls { display: flex; justify-content: center; gap: 15px; margin-top: 25px; width: 95%; max-width: 420px; }
+        .btn { 
+            background: #440088; color: #fff; font-size: 24px; 
+            border: 4px solid #6600cc; 
+            border-radius: 50%; /* 둥근 오락실 버튼 */
+            width: 70px; height: 70px;
+            display: flex; align-items: center; justify-content: center;
+            user-select: none; cursor: pointer;
+            box-shadow: 0 4px #220044; /* 입체감 */
+            transition: all 0.1s;
+        }
+        .btn:active { background: #5500aa; border-color: #00ffff; transform: translateY(2px); box-shadow: 0 2px #220044; }
+
+        /* 오버레이 (초기 메뉴/게임 오버) */
+        .overlay { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.85); 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            z-index: 10; 
+        }
+        
+        /* 90년대풍 큼직한 START 버튼 (중간 위치) */
+        .action-btn { 
+            background: #ff00ff; color: #fff; 
+            border: 5px solid #fff; 
+            padding: 15px 40px; 
+            font-size: 24px; font-family: 'DungGeunMo', sans-serif;
+            font-weight: bold; cursor: pointer;
+            text-transform: uppercase;
+            box-shadow: 4px 4px #00ffff, -4px -4px #ffcc00; /* 화려한 원색 그림자 */
+            transition: all 0.1s;
+        }
+        .action-btn:hover { background: #ff33ff; }
+        .action-btn:active { transform: scale(0.95); box-shadow: 2px 2px #00ffff, -2px -2px #ffcc00; }
+        
+        .game-over-text { color: #ff0000; font-size: 32px; margin-bottom: 10px; text-shadow: 2px 2px #000; }
     </style>
 </head>
 <body>
-    <h1>TETRIS ver.1</h1>
+    <h1><span class="title-main">Tetris 1</span><span class="title-ver">ver.1</span></h1>
+    
     <div id="game-container">
         <div id="game-wrapper">
             <canvas id="tetris" width="240" height="480"></canvas>
+            
             <div id="start-screen" class="overlay">
                 <button class="action-btn" onclick="resetGame()">START</button>
             </div>
+            
             <div id="msg" class="overlay" style="display: none;">
-                <h2 id="final-score" style="color: #00ff96">0</h2>
+                <h2 class="game-over-text">GAME OVER</h2>
+                <h2 id="final-score" style="color: #00ff00; margin-bottom: 20px;">0</h2>
                 <button class="action-btn" onclick="resetGame()">RESTART</button>
             </div>
         </div>
+        
         <div class="side-panel">
-            <div class="info-box"><div class="info-label">NEXT</div><canvas id="next-canvas" width="60" height="60" style="width:50px; height:50px;"></canvas></div>
-            <div class="info-box"><div class="info-label">LVL</div><div id="level-val" class="val" style="color:#ffcc00;">1</div></div>
-            <div class="info-box"><div class="info-label">SCR</div><div id="score-val" class="val">0</div></div>
+            <div class="info-box"><div class="info-label">NEXT</div><canvas id="next-canvas" width="60" height="60" style="width:60px; height:60px;"></canvas></div>
+            <div class="info-box"><div class="info-label">LEVEL</div><div id="level-val" class="val" style="color:#ffcc00;">1</div></div>
+            <div class="info-box"><div class="info-label">SCORE</div><div id="score-val" class="val">0</div></div>
         </div>
     </div>
+    
     <div id="controls"><div class="btn" id="btn-left">◀</div><div class="btn" id="btn-down">▼</div><div class="btn" id="btn-right">▶</div></div>
 
     <script>
@@ -54,7 +115,9 @@
         const ctx = canvas.getContext('2d');
         const nCtx = document.getElementById('next-canvas').getContext('2d');
         const COLS = 10, ROWS = 20, BLOCK = 24;
-        const COLORS = [null, '#00f0f0', '#f0f000', '#a000f0', '#00f000', '#f00000', '#0000f0', '#f0a000'];
+        
+        // 블록 색상: 90년대 원색 느낌으로 더 진하게 변경
+        const COLORS = [null, '#00e6e6', '#e6e600', '#9900e6', '#00e600', '#e60000', '#0000e6', '#e68a00'];
         const SHAPES = [null, [[1,1,1,1]], [[2,2],[2,2]], [[0,3,0],[3,3,3]], [[0,4,4],[4,4,0]], [[5,5,0],[0,5,5]], [[6,0,0],[6,6,6]], [[0,0,7],[7,7,7]]];
 
         let board, score, level, linesCleared, gameActive = false, piece, nextPiece, dropCounter, lastTime, animId, lockDelayTimeout;
@@ -87,41 +150,23 @@
             dropCounter = 0;
         }
 
-        // 하드 드롭 수정
         function hardDrop() {
             if (!gameActive) return;
             let d = 0;
-            while (!collide(piece)) {
-                piece.pos.y++;
-                d++;
-            }
+            while (!collide(piece)) { piece.pos.y++; d++; }
             piece.pos.y--;
-    
-            // 바닥에 닿은 거리만큼 점수 추가 (한 칸당 2점)
             score += d * 2; 
-    
             if (navigator.vibrate) navigator.vibrate(10);
-    
-            merge(); // 여기서 draw()를 호출하지 않아도 merge -> spawn -> update 루프에서 그려집니다.
+            merge(); 
         }
 
-        // 착지 시 기본 점수 추가 (merge 함수 수정)
         function merge() {
-           piece.matrix.forEach((row, y) => {
-                row.forEach((v, x) => {
-                    if (v && piece.pos.y + y >= 0) {
-                        board[piece.pos.y + y][piece.pos.x + x] = v;
-                    }
-                });
-            });
-    
-            // 블록이 착지할 때마다 기본 점수 10점 추가
+           piece.matrix.forEach((row, y) => { row.forEach((v, x) => { if (v && piece.pos.y + y >= 0) board[piece.pos.y + y][piece.pos.x + x] = v; }); });
             score += 10; 
-    
             clearLines();
             piece = spawnPiece();
            if (!gameActive) showGameOver();
-            updateUI(); // UI 업데이트 강제 호출
+            updateUI(); 
         }
 
         function clearLines() {
@@ -135,17 +180,47 @@
             let f = 1; while (collide(piece)) { piece.pos.x += f; f = -(f + (f > 0 ? 1 : -1)); if (f > 4) { piece.matrix = m; piece.pos.x = ox; return; } }
         }
 
-        function drawBlock(c, x, y, v, s = BLOCK) { c.fillStyle = COLORS[v]; c.fillRect(x * s, y * s, s, s); c.strokeStyle = 'rgba(255,255,255,0.4)'; c.strokeRect(x * s, y * s, s, s); }
-        function drawSide() { nCtx.fillStyle = '#232328'; nCtx.fillRect(0,0,60,60); nextPiece.matrix.forEach((row, y) => row.forEach((v, x) => { if(v) drawBlock(nCtx, x+0.5, y+0.5, v, 12); })); }
-        function updateUI() { document.getElementById('score-val').innerText = Math.floor(score); document.getElementById('level-val').innerText = level; }
-        function showGameOver() { document.getElementById('msg').style.display = 'flex'; document.getElementById('final-score').innerText = Math.floor(score); }
+        // 블록 그리기: 약간 투박한 레트로 스타일 테두리 적용
+        function drawBlock(c, x, y, v, s = BLOCK) { 
+            c.fillStyle = COLORS[v]; 
+            c.fillRect(x * s, y * s, s, s); 
+            // 블록 안쪽에 어두운 테두리를 그려 픽셀 느낌 강조
+            c.strokeStyle = 'rgba(0,0,0,0.5)'; 
+            c.lineWidth = 1;
+            c.strokeRect(x * s + 1, y * s + 1, s - 2, s - 2);
+            // 블록 바깥쪽에 밝은 테두리
+            c.strokeStyle = 'rgba(255,255,255,0.2)'; 
+            c.strokeRect(x * s, y * s, s, s);
+        }
+        
+        function drawSide() { 
+            nCtx.fillStyle = '#1a0033'; 
+            nCtx.fillRect(0,0,60,60); 
+            nextPiece.matrix.forEach((row, y) => row.forEach((v, x) => { 
+                if(v) drawBlock(nCtx, x+0.5, y+0.5, v, 12); 
+            })); 
+        }
+        
+        function updateUI() { 
+            document.getElementById('score-val').innerText = Math.floor(score); 
+            document.getElementById('level-val').innerText = level; 
+        }
+        
+        function showGameOver() { 
+            document.getElementById('msg').style.display = 'flex'; 
+            document.getElementById('final-score').innerText = Math.floor(score); 
+        }
 
         function draw() {
-            ctx.fillStyle = '#141419'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#000'; // 게임 배경은 칠흑 같은 검은색
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
             board.forEach((row, y) => row.forEach((v, x) => { if (v) drawBlock(ctx, x, y, v); }));
             if (gameActive) {
+                // 고스트 블록 (착지 지점 표시)
                 let g = { pos: {...piece.pos}, matrix: piece.matrix }; while(!collide(g)) g.pos.y++; g.pos.y--;
-                g.matrix.forEach((row, y) => row.forEach((v, x) => { if(v && g.pos.y + y >= 0) { ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fillRect((g.pos.x + x) * BLOCK, (g.pos.y + y) * BLOCK, BLOCK, BLOCK); } }));
+                g.matrix.forEach((row, y) => row.forEach((v, x) => { if(v && g.pos.y + y >= 0) { ctx.fillStyle = 'rgba(0,255,255,0.15)'; ctx.fillRect((g.pos.x + x) * BLOCK, (g.pos.y + y) * BLOCK, BLOCK, BLOCK); } }));
+                
+                // 현재 조종 중인 블록
                 piece.matrix.forEach((row, y) => row.forEach((v, x) => { if (v && piece.pos.y + y >= 0) drawBlock(ctx, piece.pos.x + x, piece.pos.y + y, v); }));
             }
         }
@@ -159,7 +234,7 @@
             sX = lastX = t.clientX;
             sY = lastY = t.clientY;
             drp = false; isMove = false;
-            e.preventDefault();
+            if (gameActive && e.cancelable) e.preventDefault();
         }, {passive: false});
 
         canvas.addEventListener('touchmove', e => {
@@ -169,8 +244,8 @@
             const dy = t.clientY - sY;
             const moveDx = t.clientX - lastX;
 
-            // 1. 하드드롭 감지 (아래로 50px 이상)
-            if (dy > 50 && Math.abs(dy) > Math.abs(dx)) {
+            // 1. 하드드롭 감지 (아래로 60px 이상)
+            if (dy > 60 && Math.abs(dy) > Math.abs(dx)) {
                 hardDrop(); drp = true;
             } 
             // 2. 좌우 스와이프 이동 감지
@@ -181,7 +256,7 @@
                 isMove = true;
                 draw();
             }
-            e.preventDefault();
+            if (gameActive && e.cancelable) e.preventDefault();
         }, {passive: false});
 
         canvas.addEventListener('touchend', e => {
@@ -192,50 +267,47 @@
             if (!isMove && !drp && Math.abs(dx) < 15 && Math.abs(dy) < 15) {
                 rotate(); draw();
             }
-            e.preventDefault();
+            if (gameActive && e.cancelable) e.preventDefault();
         }, {passive: false});
 
-// --- 모든 버튼 연속 이동 제어 (좌, 우, 하 통합) ---
-let moveInterval;
+        // --- 모든 버튼 연속 이동 제어 (좌, 우, 하 통합) ---
+        let moveInterval;
 
-function startContinuousMove(action) {
-    if (!gameActive) return;
-    action();
-    draw();
-    
-    if (moveInterval) clearInterval(moveInterval);
-    moveInterval = setInterval(() => {
-        if (gameActive) {
+        function startContinuousMove(action) {
+            if (!gameActive) return;
             action();
             draw();
-        } else {
-            clearInterval(moveInterval);
+            
+            if (moveInterval) clearInterval(moveInterval);
+            moveInterval = setInterval(() => {
+                if (gameActive) { action(); draw(); } 
+                else { clearInterval(moveInterval); }
+            }, 100); // 연속 이동 속도 (100ms)
         }
-    }, 100); // 좌우 이동 속도 (100ms)
-}
 
-function stopContinuousMove() {
-    if (moveInterval) {
-        clearInterval(moveInterval);
-        moveInterval = null;
-    }
-}
+        function stopContinuousMove() {
+            if (moveInterval) { clearInterval(moveInterval); moveInterval = null; }
+        }
 
-const btns = {
-    'btn-left': () => { piece.pos.x--; if(collide(piece)) piece.pos.x++; },
-    'btn-right': () => { piece.pos.x++; if(collide(piece)) piece.pos.x--; },
-    'btn-down': () => { drop(); score += 0.5; }
-};
+        const btns = {
+            'btn-left': () => { piece.pos.x--; if(collide(piece)) piece.pos.x++; },
+            'btn-right': () => { piece.pos.x++; if(collide(piece)) piece.pos.x--; },
+            'btn-down': () => { drop(); score += 0.5; }
+        };
 
-Object.keys(btns).forEach(id => {
-    const el = document.getElementById(id);
-    el.addEventListener('mousedown', (e) => { e.preventDefault(); startContinuousMove(btns[id]); });
-    el.addEventListener('touchstart', (e) => { e.preventDefault(); startContinuousMove(btns[id]); }, { passive: false });
-    el.addEventListener('mouseup', stopContinuousMove);
-    el.addEventListener('mouseleave', stopContinuousMove);
-    el.addEventListener('touchend', stopContinuousMove);
-    el.addEventListener('touchcancel', stopContinuousMove);
-});
+        Object.keys(btns).forEach(id => {
+            const el = document.getElementById(id);
+            // 모바일 메뉴 팝업 방지 및 연속 조작 설정
+            const prevent = (e) => { if (e.cancelable) e.preventDefault(); };
+            
+            el.addEventListener('mousedown', (e) => { prevent(e); startContinuousMove(btns[id]); });
+            el.addEventListener('touchstart', (e) => { prevent(e); startContinuousMove(btns[id]); }, { passive: false });
+            
+            el.addEventListener('mouseup', stopContinuousMove);
+            el.addEventListener('mouseleave', stopContinuousMove);
+            el.addEventListener('touchend', stopContinuousMove);
+            el.addEventListener('touchcancel', stopContinuousMove);
+        });
 
         // 키보드 제어 (PC용)
         window.addEventListener('keydown', e => {
@@ -248,7 +320,19 @@ Object.keys(btns).forEach(id => {
             draw();
         });
 
-        function update(time = 0) { if (!gameActive) return; const dt = time - lastTime; lastTime = time; dropCounter += dt; const speed = Math.max(100, 800 - (level - 1) * 70); if (dropCounter > speed) drop(); draw(); animId = requestAnimationFrame(update); }
+        // 게임 루프 및 속도 조절
+        function update(time = 0) { 
+            if (!gameActive) return; 
+            const dt = time - lastTime; 
+            lastTime = time; 
+            dropCounter += dt; 
+            // 레벨이 오를수록 빨라짐 (최소 속도 100ms)
+            const speed = Math.max(100, 800 - (level - 1) * 70); 
+            if (dropCounter > speed) drop(); 
+            draw(); 
+            animId = requestAnimationFrame(update); 
+        }
+        
         draw();
     </script>
 </body>
